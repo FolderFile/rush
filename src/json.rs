@@ -18,7 +18,6 @@ fn escape_json(text: &str) -> String {
     out
 }
 
-#[allow(dead_code)]
 pub fn exec_message(cmd: &str, rows: u16, cols: u16) -> String {
     format!(
         "{{\"type\":\"exec\",\"cmd\":\"{}\",\"rows\":{},\"cols\":{}}}",
@@ -28,12 +27,11 @@ pub fn exec_message(cmd: &str, rows: u16, cols: u16) -> String {
     )
 }
 
-#[allow(dead_code)]
+#[cfg(target_os = "linux")]
 pub fn exit_message(code: i32) -> String {
     format!("{{\"type\":\"exit\",\"code\":{}}}", code)
 }
 
-#[allow(dead_code)]
 pub fn parse_exit_code(text: &str) -> Option<i32> {
     if field_str(text, "type")? != "exit" {
         return None;
@@ -68,7 +66,7 @@ fn field_str<'a>(json: &'a str, key: &str) -> Option<&'a str> {
     Some(&value[..end])
 }
 
-#[allow(dead_code)]
+#[cfg(target_os = "linux")]
 pub struct SessionInit {
     pub rows: u16,
     pub cols: u16,

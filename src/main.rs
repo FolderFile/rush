@@ -11,7 +11,7 @@ mod sys;
 mod term;
 mod ws;
 
-pub const VERSION: &str = "0.2.0-alpha";
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const HELP: &str = "\
 rush - remote terminal over websockets

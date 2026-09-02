@@ -12,6 +12,19 @@ binary you can drop anywhere.
 
 The name is what it is: ush, but in Rust.
 
+## Installing
+
+Linux, one line:
+
+    curl -fL https://github.com/FolderFile/rush/releases/latest/download/install.sh | bash
+
+That drops the binary in /usr/bin/rush, checks it against the release's
+SHA256SUMS file first, and tells you how to go from there. The repo is private
+right now, so unauthenticated downloads get a 404 - the script falls back to
+`gh` auth or `GITHUB_TOKEN` if you have either. `rush --update` upgrades the
+installed binary later, `rush --uninstall` removes it. On Windows, grab
+`rush.exe` from the releases page.
+
 ## Building
 
 You need a Rust toolchain, that's it. There is nothing else to install, ever.
@@ -48,9 +61,15 @@ that's too loose for your network, both sides can take a shared token:
     rush -s -p 8080 -k mysecret
     rush thehost -p 8080 -k mysecret
 
-Clients without the token get dropped at the handshake. This is a padlock on a
-garden gate, not real authentication - still put it behind a TLS proxy if the
-network isn't yours.
+Clients without the token get dropped at the handshake. Wrong tokens get a
+one-second delay before the drop, which throttles sequential guessing (a
+patient attacker can still open parallel connections, so don't mistake this
+for rate limiting). The comparison itself is constant-time, and child
+sessions get a scrubbed environment (just TERM and PATH), so the token never
+leaks into a shell you or anyone else opens through rush.
+
+This is a padlock on a garden gate, not real authentication - still put it
+behind a TLS proxy if the network isn't yours.
 
 ## How it works
 

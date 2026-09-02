@@ -49,6 +49,8 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: rush.exe
+      - name: checksums
+        run: sha256sum rush-linux rush.exe > SHA256SUMS
       - uses: softprops/action-gh-release@v2
         with:
           body: |
@@ -72,3 +74,4 @@ jobs:
             rush-linux
             rush.exe
             install.sh
+            SHA256SUMS

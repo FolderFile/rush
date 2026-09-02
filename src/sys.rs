@@ -93,13 +93,12 @@ mod linux {
         pub fn dup2(old: i32, new: i32) -> i32;
         pub fn fork() -> pid_t;
         pub fn setsid() -> i32;
-        pub fn execv(path: *const core::ffi::c_char, argv: *const *const core::ffi::c_char) -> i32;
+        pub fn execve(path: *const core::ffi::c_char, argv: *const *const core::ffi::c_char, envp: *const *const core::ffi::c_char) -> i32;
         pub fn _exit(code: i32) -> !;
         pub fn ioctl(fd: i32, request: u64, ...) -> i32;
         pub fn fcntl(fd: i32, cmd: i32, ...) -> i32;
         pub fn kill(pid: pid_t, sig: i32) -> i32;
         pub fn waitpid(pid: pid_t, status: *mut i32, options: i32) -> pid_t;
-        pub fn setenv(name: *const core::ffi::c_char, value: *const core::ffi::c_char, overwrite: i32) -> i32;
         pub fn access(path: *const core::ffi::c_char, mode: i32) -> i32;
         pub fn poll(fds: *mut PollFd, nfds: u64, timeout: i32) -> i32;
         pub fn tcgetattr(fd: i32, termios: *mut Termios) -> i32;

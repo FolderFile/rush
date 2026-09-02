@@ -147,14 +147,13 @@ impl PtySession {
             }
         }
         self.stop.store(true, Ordering::SeqCst);
-        self.queue.finish();
 
         let mut exit_code: Option<i32> = None;
         let reap_deadline = Instant::now() + Duration::from_secs(1);
         loop {
             if let Some(status) = pty::reap(pid, false) {
                 exit_code = Some(if status & 0x7F == 0 {
-                    ((status >> 8) & 0xFF) as i32
+                    (status >> 8) & 0xFF
                 } else {
                     128 + (status & 0x7F)
                 });
@@ -186,7 +185,6 @@ impl PtySession {
         }
         let _ = pty_reader.join();
         let _ = pty_writer.join();
-        let _ = session;
     }
 }
 

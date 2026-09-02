@@ -336,7 +336,6 @@ impl WsStream {
 pub struct BoundedQueue {
     items: Mutex<std::collections::VecDeque<Option<Vec<u8>>>>,
     cap: usize,
-    signal: Mutex<bool>,
     cond: std::sync::Condvar,
 }
 
@@ -346,7 +345,6 @@ impl BoundedQueue {
         BoundedQueue {
             items: Mutex::new(std::collections::VecDeque::new()),
             cap,
-            signal: Mutex::new(false),
             cond: std::sync::Condvar::new(),
         }
     }
@@ -377,9 +375,6 @@ impl BoundedQueue {
                 self.cond.notify_one();
                 return Some(item);
             }
-            if *self.signal.lock().unwrap_or_else(|e| e.into_inner()) {
-                return None;
-            }
             if stop.load(Ordering::SeqCst) {
                 return None;
             }
@@ -389,11 +384,6 @@ impl BoundedQueue {
                 .unwrap_or_else(|e| e.into_inner());
             items = guard;
         }
-    }
-
-    pub fn finish(&self) {
-        *self.signal.lock().unwrap_or_else(|e| e.into_inner()) = true;
-        self.cond.notify_all();
     }
 }
 
