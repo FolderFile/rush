@@ -1,7 +1,8 @@
 # rush wire protocol
 
-rush speaks the same protocol as ush.py v4.0. This document describes it
-exactly, so you can implement a client or server without reading the code.
+rush speaks the same protocol as the ush.py v4.0 family of tools. This
+document describes it exactly, so you can implement a client or server
+without reading the code.
 
 ## Opening
 
@@ -70,7 +71,7 @@ a dumb pipe:
 
   The code is the wait status: low 8 bits for a normal exit, 128+signal if the
   process died to a signal. Clients use it for `rush -e`; servers that don't
-  send it (ush.py) simply leave clients at exit code 0.
+  send it simply leave clients at exit code 0.
 
 - **Ping/pong**: both sides send a ping every 20 seconds and answer pings with
   pongs. There is no keepalive timeout; a dead connection is noticed when a

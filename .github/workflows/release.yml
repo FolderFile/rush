@@ -69,7 +69,7 @@ jobs:
             rush --update              update the installed binary
             rush --uninstall           remove binary and service
 
-            Same wire protocol as ush.py v4.0. Optional shared token (-k / RUSH_KEY); see README.
+            Optional shared token (-k / RUSH_KEY); see README for security notes.
           files: |
             rush-linux
             rush.exe
