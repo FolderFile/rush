@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""ush.py v4.0 - dependency-free WebSocket terminal relay.
+"""rush - a rush implementation of Ush Python (ush.py), for Linux and Windows.
 
-This remains intentionally unauthenticated. Run it only on a trusted network
-or behind an authenticated TLS reverse proxy.
+Dependency-free WebSocket terminal relay. This remains intentionally
+unauthenticated. Run it only on a trusted network or behind an authenticated
+TLS reverse proxy.
 """
 import argparse
 import asyncio
@@ -176,7 +177,7 @@ async def connect_websocket(uri):
     request = (
         f"GET {path} HTTP/1.1\r\nHost: {host_header}\r\nUpgrade: websocket\r\n"
         "Connection: Upgrade\r\nSec-WebSocket-Version: 13\r\n"
-        f"Sec-WebSocket-Key: {key}\r\nUser-Agent: ush.py/{VERSION}\r\n\r\n"
+        f"Sec-WebSocket-Key: {key}\r\nUser-Agent: rush.py/{VERSION}\r\n\r\n"
     )
     writer.write(request.encode("ascii"))
     await writer.drain()
@@ -421,7 +422,7 @@ async def server(port):
     if platform.system() != "Linux":
         sys.exit("Server runs on Linux only.")
     listener = await asyncio.start_server(lambda r, w: accept(r, w), "0.0.0.0", port, backlog=512)
-    print(f"[ush] v{VERSION} server running on :{port}", flush=True)
+    print(f"[rush] v{VERSION} server running on :{port}", flush=True)
     async with listener:
         await listener.serve_forever()
 
@@ -450,15 +451,15 @@ async def accept(reader, writer):
 def install_service(port):
     if os.geteuid() != 0:
         sys.exit("-si must be run as root")
-    target = "/usr/bin/ush"
+    target = "/usr/bin/rush"
     source = os.path.realpath(__file__)
     if os.path.realpath(target) != source:
         shutil.copy2(source, target)
         os.chmod(target, 0o755)
     if shutil.which("systemctl") and os.path.isdir("/run/systemd/system"):
-        path = "/etc/systemd/system/ush.service"
+        path = "/etc/systemd/system/rush.service"
         content = f"""[Unit]
-Description=ush.py remote shell server
+Description=rush.py remote shell server
 After=network-online.target
 Wants=network-online.target
 
@@ -474,44 +475,44 @@ LimitNOFILE=65536
 WantedBy=multi-user.target
 """
         manager = ["systemctl", "daemon-reload"]
-        enable = ["systemctl", "enable", "--now", "ush.service"]
+        enable = ["systemctl", "enable", "--now", "rush.service"]
     elif shutil.which("rc-service"):
-        path = "/etc/init.d/ush"
+        path = "/etc/init.d/rush"
         content = f"""#!/sbin/openrc-run
-name=ush
-description="ush.py remote shell server"
+name=rush
+description="rush.py remote shell server"
 command={target}
 command_args="--server -p {port}"
 command_background=yes
-pidfile=/run/ush.pid
-output_log=/var/log/ush.log
-error_log=/var/log/ush.log
+pidfile=/run/rush.pid
+output_log=/var/log/rush.log
+error_log=/var/log/rush.log
 retry="TERM/10/KILL/5"
 
 export TERM=xterm-256color
 """
         manager = []
-        enable = ["rc-update", "add", "ush", "default"]
+        enable = ["rc-update", "add", "rush", "default"]
     else:
         sys.exit("Neither systemd nor OpenRC was detected")
     with open(path, "w", encoding="ascii") as service_file:
         service_file.write(content)
-    if path.endswith("/ush"):
+    if path.endswith("/rush"):
         os.chmod(path, 0o755)
     for command in (manager, enable):
         if command:
             result = subprocess.run(command, check=False)
             if result.returncode:
                 sys.exit(f"service setup failed: {' '.join(command)}")
-    if path.endswith("/ush"):
-        result = subprocess.run(["rc-service", "ush", "start"], check=False)
+    if path.endswith("/rush"):
+        result = subprocess.run(["rc-service", "rush", "start"], check=False)
         if result.returncode:
             sys.exit("service installed but could not be started")
-    print(f"Installed and enabled ush service on port {port}.")
+    print(f"Installed and enabled rush service on port {port}.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description=f"ush.py v{VERSION}")
+    parser = argparse.ArgumentParser(description=f"rush.py v{VERSION}")
     parser.add_argument("--server", "-s", action="store_true", help="run the Linux server")
     parser.add_argument("-si", action="store_true", help="install and enable a server service")
     parser.add_argument("-p", type=int, default=8080, help="server port (default: 8080)")
