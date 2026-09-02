@@ -2,7 +2,7 @@
 
 rush is a remote terminal over websockets. You run the server on a Linux box,
 you connect to it from your terminal, and you get a shell. It's written in Rust
-with zero dependencies - no crates, no runtime, one binary.
+with zero dependencies: no crates, no runtime, one binary.
 
 It's a rewrite of the ush.py concept - a Python tool that does the same
 thing. rush speaks the same protocol, so a rush client can talk to a ush.py
