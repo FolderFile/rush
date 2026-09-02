@@ -1,103 +1,85 @@
 # rush
 
-rush is a remote terminal over websockets. You run the server on a Linux box,
-you connect to it from your terminal, and you get a shell. It's written in Rust
-with zero dependencies: no crates, no runtime, one binary.
+rush is a remote terminal over websockets. Server on a Linux box, client from
+anywhere, shell in your terminal. Written in Rust with zero dependencies:
+no crates, no interpreter, no runtime, one binary.
 
-It's a Rust implementation of the ush.py concept - a Python tool that does
-the same thing. rush speaks the same protocol, so a rush client can talk to
-a ush.py v4.0 server and the other way around. The difference is what's
-under the hood: no interpreter, no event loop, no per-byte Python loops, and a
-binary you can drop anywhere.
+It is a Rust implementation of ush and speaks the same wire protocol, so it
+works against a ush.py v4.0 server and vice versa.
 
-The name is what it is: ush, but in Rust.
+## Install
 
-## Installing
-
-Linux, one line:
+Linux:
 
     curl -fL https://github.com/FolderFile/rush/releases/latest/download/install.sh | bash
 
-That drops the binary in /usr/bin/rush, checks it against the release's
-SHA256SUMS file first, and tells you how to go from there. The repo is private
-right now, so unauthenticated downloads get a 404 - the script falls back to
-`gh` auth or `GITHUB_TOKEN` if you have either. `rush --update` upgrades the
-installed binary later, `rush --uninstall` removes it. On Windows, grab
-`rush.exe` from the releases page.
+That puts the binary in /usr/bin/rush after checking it against SHA256SUMS.
+The repo is private, so if curl gets a 404 the script falls back to gh auth
+or GITHUB_TOKEN. `rush --update` upgrades the binary later, `rush --uninstall`
+removes it. On Windows, take rush.exe from the releases page.
 
-## Building
-
-You need a Rust toolchain, that's it. There is nothing else to install, ever.
+## Build
 
     cargo build --release
 
-The binary ends up in `target/release/rush` and is all you need.
+That is the whole toolchain story. The result in target/release/rush is all
+you need.
 
 ## Usage
 
-Start the server on the machine you want to reach (Linux):
+Server (Linux):
 
     rush -s -p 8080
 
-Connect from anywhere (Linux or Windows):
+Client (Linux or Windows, host can be an ip, a domain, or host:port):
 
     rush thehost -p 8080
 
-You'll get whatever login prompt the machine normally shows. Disconnect with
-`Ctrl+]`.
+You get whatever login prompt the machine shows. `Ctrl+]` disconnects.
 
-If you want it to survive reboots, as root on the server:
+Run a single command instead of a shell, ssh style:
 
-    rush -si -p 8080
+    rush thehost -e "uname -a"
 
-That copies the binary to /usr/bin/rush and installs a systemd or OpenRC
-service, whichever it finds.
+The client exits with the remote command's exit status. If the link is
+unreliable, add `-r` and the client will retry a dropped connection five
+times with backoff.
 
-### Shared token
+As root on the server, `rush -si -p 8080` copies the binary to /usr/bin/rush
+and installs a systemd or OpenRC service, whichever it finds.
 
-By default the server trusts whoever can reach the port, same as ush.py. If
-that's too loose for your network, both sides can take a shared token:
+## Token
+
+By default anyone who can reach the port gets a login prompt. To require a
+shared secret:
 
     rush -s -p 8080 -k mysecret
     rush thehost -p 8080 -k mysecret
 
-Clients without the token get dropped at the handshake. Wrong tokens get a
-one-second delay before the drop, which throttles sequential guessing (a
-patient attacker can still open parallel connections, so don't mistake this
-for rate limiting). The comparison itself is constant-time, and child
-sessions get a scrubbed environment (just TERM and PATH), so the token never
-leaks into a shell you or anyone else opens through rush.
+or set RUSH_KEY on both sides. Wrong tokens get dropped after a one second
+delay, the comparison is constant time, and sessions run with a scrubbed
+environment (TERM and PATH only) so the token cannot leak into a shell.
 
-This is a padlock on a garden gate, not real authentication - still put it
-behind a TLS proxy if the network isn't yours.
+This is not real authentication. Behind a TLS proxy it is fine, on a hostile
+network it is not.
 
 ## How it works
 
-The server listens on a TCP port and speaks plain HTTP until someone asks for
-a websocket upgrade. Once that's done it waits for a resize message, opens a
-pty, and forks /bin/login onto it (or $SHELL if there's no login, or whatever
-RUSH_SHELL points at if you set it - handy in containers). From then on the
-session is a dumb pipe: binary websocket frames carry terminal bytes in both
-directions, text frames carry small JSON control messages like window resizes.
+The server answers websocket upgrades on a plain TCP port, waits for a resize
+message, then forks /bin/login on a pty ($SHELL as fallback, or whatever
+RUSH_SHELL points at, useful in containers). From there it is a dumb pipe:
+binary websocket frames carry terminal bytes, text frames carry small JSON
+control messages like resizes. The exact wire format is in PROTOCOL.md.
 
-On the client side rush puts your terminal in raw mode and everything you type
-goes to the server as it's pressed, keys and all. `Ctrl+]` is the only key the
-client keeps for itself. The wire format is documented in
-[PROTOCOL.md](PROTOCOL.md) if you want to talk to it from something else.
+The client puts your terminal in raw mode and forwards every byte, Ctrl+C
+included. The only key it keeps for itself is Ctrl+].
 
-## Known limitations
+## Known issues
 
-- The server only runs on Linux. The client runs on Linux and Windows.
-- There is no TLS in this build, so no wss:// yet. Put it behind a TLS proxy
-  (caddy, nginx, anything) if you need encryption.
-- The token check happens before the websocket upgrade, in cleartext. Behind a
-  TLS proxy that's fine; on a hostile network it isn't.
-- Resize is polled every half second instead of using SIGWINCH. It works, but
-  it's not subtle.
-- `-e` exec sessions only work rush-to-rush; against a ush.py server the
-  client just gets a normal login shell.
-
-## Credits
-
-rush's protocol and design take their cue from the ush.py tools that came
-before it. rush is MIT licensed.
+- Server is Linux only. Client works on Linux and Windows.
+- No TLS yet, so no wss://. Put it behind caddy or nginx if you need
+  encryption.
+- The token travels in cleartext before the upgrade. Same rule: TLS proxy.
+- Window resizes are polled every 500ms instead of using SIGWINCH.
+- `-e` sessions only work rush to rush. Against a ush.py server you just get
+  the normal login shell.
