@@ -56,10 +56,18 @@ jobs:
             rush-linux: Linux x86_64 server + client.
             rush.exe: Windows x86_64 client.
 
+            Install on Linux:
+
+                curl -fL https://github.com/FolderFile/rush/releases/latest/download/install.sh | bash
+
             rush -s -p 8080            run the server (Linux)
             rush host -p 8080          connect (Linux/Windows)
+            rush host -e CMD           run one command, exit with its status
+            rush --update              update the installed binary
+            rush --uninstall           remove binary and service
 
-            Same wire protocol as ush.py v4.0. Unauthenticated by default; see README.
+            Same wire protocol as ush.py v4.0. Optional shared token (-k / RUSH_KEY); see README.
           files: |
             rush-linux
             rush.exe
+            install.sh

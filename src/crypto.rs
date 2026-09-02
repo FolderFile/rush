@@ -92,6 +92,18 @@ pub fn random_bytes(buf: &mut [u8]) {
     }
 }
 
+#[cfg(any(test, target_os = "linux"))]
+pub fn ct_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,5 +118,13 @@ mod tests {
     fn base64_padding() {
         assert_eq!(base64(b"foobar"), "Zm9vYmFy");
         assert_eq!(base64(b"foob"), "Zm9vYg==");
+    }
+
+    #[test]
+    fn ct_eq_works() {
+        assert!(ct_eq(b"secret", b"secret"));
+        assert!(!ct_eq(b"secret", b"secretx"));
+        assert!(!ct_eq(b"secret", b"secred"));
+        assert!(ct_eq(b"", b""));
     }
 }

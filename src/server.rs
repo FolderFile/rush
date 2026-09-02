@@ -33,20 +33,24 @@ fn handle(mut stream: TcpStream, token: Option<&str>) -> Result<(), String> {
     ws::server_handshake(&mut stream, token).map_err(|e| e.to_string())?;
     let ws = Arc::new(WsStream::new(stream, false).map_err(|e| e.to_string())?);
     ws.set_read_timeout(Some(ws::HANDSHAKE_TIMEOUT));
-    let init = match ws.read_message() {
+    let init_text = match ws.read_message() {
         Ok(Msg::Text(text)) => text,
         Ok(_) => return Err("resize message required".into()),
         Err(e) => return Err(e.to_string()),
     };
     ws.set_read_timeout(None);
-    let (rows, cols) = json::parse_resize_init(&init);
+    let init = json::parse_session_init(&init_text);
 
     let session = PtySession {
         ws,
         stop: Arc::new(AtomicBool::new(false)),
         queue: Arc::new(BoundedQueue::new(ws::MAX_QUEUE)),
     };
-    let pty = pty::spawn(rows, cols).map_err(|e| format!("pty: {e}"))?;
+    let pty = match &init.exec {
+        Some(cmd) => pty::spawn_command(cmd, init.rows, init.cols),
+        None => pty::spawn(init.rows, init.cols),
+    }
+    .map_err(|e| format!("pty: {e}"))?;
     session.run(pty);
     Ok(())
 }
@@ -123,9 +127,11 @@ impl PtySession {
         let pinger_ws = Arc::clone(&self.ws);
         let pinger_stop = Arc::clone(&self.stop);
         std::thread::spawn(move || loop {
-            std::thread::sleep(Duration::from_secs(ws::PING_INTERVAL));
-            if pinger_stop.load(Ordering::SeqCst) {
-                break;
+            for _ in 0..ws::PING_INTERVAL * 10 {
+                if pinger_stop.load(Ordering::SeqCst) {
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(100));
             }
             let _ = pinger_ws.ping();
         });
@@ -142,6 +148,26 @@ impl PtySession {
         }
         self.stop.store(true, Ordering::SeqCst);
         self.queue.finish();
+
+        let mut exit_code: Option<i32> = None;
+        let reap_deadline = Instant::now() + Duration::from_secs(1);
+        loop {
+            if let Some(status) = pty::reap(pid, false) {
+                exit_code = Some(if status & 0x7F == 0 {
+                    ((status >> 8) & 0xFF) as i32
+                } else {
+                    128 + (status & 0x7F)
+                });
+                break;
+            }
+            if Instant::now() >= reap_deadline {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        if let Some(code) = exit_code {
+            let _ = self.ws.send_text(&json::exit_message(code));
+        }
         self.ws.close();
 
         pty::close(master);

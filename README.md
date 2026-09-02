@@ -75,6 +75,8 @@ client keeps for itself. The wire format is documented in
   TLS proxy that's fine; on a hostile network it isn't.
 - Resize is polled every half second instead of using SIGWINCH. It works, but
   it's not subtle.
+- `-e` exec sessions only work rush-to-rush; against a ush.py server the
+  client just gets a normal login shell.
 
 ## Credits
 

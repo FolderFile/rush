@@ -4,6 +4,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
+#[cfg(target_os = "linux")]
+use crate::crypto::ct_eq;
 use crate::crypto::{base64, random_bytes, sha1};
 #[cfg(target_os = "linux")]
 use crate::sys;
@@ -150,8 +152,11 @@ pub fn server_handshake(stream: &mut TcpStream, token: Option<&str>) -> Result<(
         return Err(std::io::Error::new(ErrorKind::InvalidData, "invalid upgrade"));
     }
     if let Some(t) = token {
-        let ok = header(&headers, "authorization").map(|v| v == format!("Bearer {}", t)).unwrap_or(false);
+        let ok = header(&headers, "authorization")
+            .map(|v| ct_eq(v.as_bytes(), format!("Bearer {}", t).as_bytes()))
+            .unwrap_or(false);
         if !ok {
+            std::thread::sleep(Duration::from_secs(1));
             return Err(std::io::Error::new(ErrorKind::PermissionDenied, "bad token"));
         }
     }

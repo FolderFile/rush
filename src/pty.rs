@@ -22,7 +22,20 @@ unsafe fn exec_or_die(path: &str, arg0: &str) -> ! {
     sys::_exit(127)
 }
 
+pub enum ChildKind {
+    Login,
+    Command(String),
+}
+
 pub fn spawn(rows: u16, cols: u16) -> io::Result<Pty> {
+    spawn_child(ChildKind::Login, rows, cols)
+}
+
+pub fn spawn_command(cmd: &str, rows: u16, cols: u16) -> io::Result<Pty> {
+    spawn_child(ChildKind::Command(cmd.to_string()), rows, cols)
+}
+
+fn spawn_child(kind: ChildKind, rows: u16, cols: u16) -> io::Result<Pty> {
     let master = unsafe { sys::posix_openpt(sys::O_RDWR | sys::O_NOCTTY) };
     if master < 0 {
         return Err(io::Error::last_os_error());
@@ -68,19 +81,33 @@ pub fn spawn(rows: u16, cols: u16) -> io::Result<Pty> {
             let term = cstr("TERM");
             let val = cstr("xterm-256color");
             sys::setenv(term.as_ptr(), val.as_ptr(), 1);
-            if let Ok(custom) = std::env::var("RUSH_SHELL") {
-                if !custom.is_empty() {
-                    let arg0 = custom.split('/').next_back().unwrap_or(&custom).to_string();
-                    exec_or_die(&custom, &arg0);
+            match kind {
+                ChildKind::Command(cmd) => {
+                    let sh = cstr("/bin/sh");
+                    let sh0 = cstr("sh");
+                    let dashc = cstr("-c");
+                    let cmdc = cstr(&cmd);
+                    let argv: [*const core::ffi::c_char; 4] =
+                        [sh0.as_ptr(), dashc.as_ptr(), cmdc.as_ptr(), std::ptr::null()];
+                    sys::execv(sh.as_ptr(), argv.as_ptr());
+                    sys::_exit(127)
+                }
+                ChildKind::Login => {
+                    if let Ok(custom) = std::env::var("RUSH_SHELL") {
+                        if !custom.is_empty() {
+                            let arg0 = custom.split('/').next_back().unwrap_or(&custom).to_string();
+                            exec_or_die(&custom, &arg0);
+                        }
+                    }
+                    let login = cstr("/bin/login");
+                    if sys::access(login.as_ptr(), 1) == 0 {
+                        exec_or_die("/bin/login", "/bin/login");
+                    }
+                    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+                    let arg0 = shell.rsplit('/').next().unwrap_or(&shell).to_string();
+                    exec_or_die(&shell, &arg0);
                 }
             }
-            let login = cstr("/bin/login");
-            if sys::access(login.as_ptr(), 1) == 0 {
-                exec_or_die("/bin/login", "/bin/login");
-            }
-            let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-            let arg0 = shell.rsplit('/').next().unwrap_or(&shell).to_string();
-            exec_or_die(&shell, &arg0);
         }
     }
     if unsafe { sys::fcntl_getfl(master) } < 0 {

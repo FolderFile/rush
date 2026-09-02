@@ -2,6 +2,8 @@ mod client;
 mod crypto;
 mod json;
 #[cfg(target_os = "linux")]
+mod manage;
+#[cfg(target_os = "linux")]
 mod pty;
 #[cfg(target_os = "linux")]
 mod server;
@@ -9,34 +11,43 @@ mod sys;
 mod term;
 mod ws;
 
-pub const VERSION: &str = "0.1.0-alpha";
+pub const VERSION: &str = "0.2.0-alpha";
 
 const HELP: &str = "\
 rush - remote terminal over websockets
 
 usage:
-  rush -s [-b ADDR] [-p PORT] [-k KEY]    run the server (Linux only)
-  rush -si [-p PORT]                      install and enable a server service (Linux, root)
-  rush HOST [-p PORT] [-k KEY] [-v]       connect to a server
+  rush -s [-b ADDR] [-p PORT] [-k KEY]     run the server (Linux only)
+  rush -si [-p PORT] [-k KEY]              install and enable a server service
+  rush HOST [-p PORT] [-k KEY] [-v]        connect to a server
+  rush HOST -e CMD                         run CMD on the server and exit
+  rush --update                            update the installed binary (Linux)
+  rush --uninstall                         remove the binary and service (Linux)
 
 options:
   -s, --server       run the server
   -si                install and enable a systemd or OpenRC service
   -b, --bind ADDR    bind address (default: 0.0.0.0)
   -p PORT            server port (default: 8080)
-  -k, --key KEY      shared token; the client sends it, the server checks it
+  -k, --key KEY      shared token; or set RUSH_KEY
+  -e, --exec CMD     run CMD instead of a login shell, exit when done
+  -r, --reconnect    retry a dropped connection (5 attempts with backoff)
   -v, --verbose      show failure details
   -h, --help         show this help
 
-disconnect with Ctrl+]";
+HOST is an ip, a domain, or host:port. disconnect with Ctrl+]";
 
 struct Args {
     server: bool,
     install: bool,
+    update: bool,
+    uninstall: bool,
     bind: String,
     port: u16,
     verbose: bool,
+    reconnect: bool,
     token: Option<String>,
+    exec: Option<String>,
     host: Option<String>,
 }
 
@@ -44,10 +55,14 @@ fn parse_args() -> Result<Args, String> {
     let mut args = Args {
         server: false,
         install: false,
+        update: false,
+        uninstall: false,
         bind: "0.0.0.0".to_string(),
         port: 8080,
         verbose: false,
+        reconnect: false,
         token: None,
+        exec: None,
         host: None,
     };
     let mut iter = std::env::args().skip(1);
@@ -55,7 +70,10 @@ fn parse_args() -> Result<Args, String> {
         match arg.as_str() {
             "-s" | "--server" => args.server = true,
             "-si" => args.install = true,
+            "--update" => args.update = true,
+            "--uninstall" => args.uninstall = true,
             "-v" | "--verbose" => args.verbose = true,
+            "-r" | "--reconnect" => args.reconnect = true,
             "-h" | "--help" => {
                 println!("{}", HELP);
                 std::process::exit(0);
@@ -73,6 +91,9 @@ fn parse_args() -> Result<Args, String> {
             }
             "-k" | "--key" => {
                 args.token = Some(iter.next().ok_or("-k requires a token")?);
+            }
+            "-e" | "--exec" => {
+                args.exec = Some(iter.next().ok_or("-e requires a command")?);
             }
             other => {
                 if other.starts_with('-') && other.len() > 1 {
@@ -100,16 +121,34 @@ fn main() {
         eprintln!("rush: port must be between 1 and 65535");
         std::process::exit(2);
     }
-    let token = args.token.clone().filter(|t| !t.is_empty());
+    let token = args
+        .token
+        .clone()
+        .filter(|t| !t.is_empty())
+        .or_else(|| std::env::var("RUSH_KEY").ok().filter(|t| !t.is_empty()));
 
-    if args.install || args.server {
+    if args.update || args.uninstall {
+        #[cfg(target_os = "linux")]
+        {
+            let result = if args.update { manage::update() } else { manage::uninstall() };
+            if let Err(e) = result {
+                eprintln!("rush: {}", e);
+                std::process::exit(1);
+            }
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = token;
+            eprintln!("rush: --update and --uninstall are not supported on Windows; re-download rush.exe from the releases page.");
+            std::process::exit(1);
+        }
+    } else if args.install || args.server {
         run_server(&args, token);
-        return;
-    }
-
-    match args.host {
-        Some(host) => client::run(&host, args.port, args.verbose, token),
-        None => println!("{}", HELP),
+    } else {
+        match args.host {
+            Some(host) => client::run(&host, args.port, args.verbose, token, args.exec, args.reconnect),
+            None => println!("{}", HELP),
+        }
     }
 }
 
