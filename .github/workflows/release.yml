@@ -1,0 +1,62 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --locked
+      - name: rename binary
+        run: cp target/release/rush rush-linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rush-linux
+          path: rush-linux
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --locked
+      - name: rename binary
+        shell: bash
+        run: cp target/release/rush.exe rush.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rush.exe
+          path: rush.exe
+
+  publish:
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: rush-linux
+      - uses: actions/download-artifact@v4
+        with:
+          name: rush.exe
+      - uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            rush ${{ github.ref_name }}
+
+            rush-linux: Linux x86_64 server + client.
+            rush.exe: Windows x86_64 client.
+
+            rush -s -p 8080            run the server (Linux)
+            rush host -p 8080          connect (Linux/Windows)
+
+            Same wire protocol as ush.py v4.0. Unauthenticated by default; see README.
+          files: |
+            rush-linux
+            rush.exe

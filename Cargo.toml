@@ -1,0 +1,16 @@
+[package]
+name = "rush"
+version = "0.1.0-alpha"
+edition = "2021"
+description = "rush: remote terminal over websockets. A Rust rewrite of ush.py with zero dependencies, for Linux and Windows."
+license = "MIT"
+
+[[bin]]
+name = "rush"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
