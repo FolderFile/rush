@@ -2,7 +2,7 @@
 name = "rush"
 version = "0.3.0-alpha"
 edition = "2021"
-description = "rush: remote terminal over websockets. A zero-dependency Rust rewrite of the ush.py concept, for Linux and Windows."
+description = "rush: a zero-dependency Rust implementation of ush, remote terminal over websockets, for Linux and Windows."
 license = "MIT"
 
 [[bin]]
