@@ -11,11 +11,17 @@ jobs:
         include:
           - os: ubuntu-latest
             name: linux
+            target: x86_64-unknown-linux-musl
           - os: windows-latest
             name: windows
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build --release --locked
-      - run: cargo test --release --locked
+        with:
+          targets: ${{ matrix.target }}
+      - name: install musl tools
+        if: matrix.name == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      - run: cargo test --release --locked --target ${{ matrix.target }}

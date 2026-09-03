@@ -14,9 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build --release --locked
+        with:
+          targets: x86_64-unknown-linux-musl
+      - name: install musl tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: cargo build --release --locked --target x86_64-unknown-linux-musl
       - name: rename binary
-        run: cp target/release/rush rush-linux
+        run: cp target/x86_64-unknown-linux-musl/release/rush rush-linux
       - uses: actions/upload-artifact@v4
         with:
           name: rush-linux
