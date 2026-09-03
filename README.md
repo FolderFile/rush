@@ -41,11 +41,17 @@ Server (Linux):
 
     rush -s -p 8080
 
-Client (Linux or Windows, host can be an ip, a domain, or host:port):
+Client (Linux or Windows):
 
-    rush thehost -p 8080
+    rush thehost -p 8080      ip, ush-style, defaults to port 8080
+    rush thehost:8080         explicit port
+    rush thehost              domain, defaults to port 80
 
-You get whatever login prompt the machine shows. `Ctrl+]` disconnects.
+A bare domain goes out on port 80, which is what you want behind a
+cloudflared tunnel; this box's own public server runs that way at
+rush-sh.venesus.xyz. On a normal root-run server you get whatever login
+prompt the machine shows (rush runs /bin/login, same as ush), username and
+password included. `Ctrl+]` disconnects.
 
 Run a single command instead of a shell, ssh style:
 
