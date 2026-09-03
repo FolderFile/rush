@@ -144,6 +144,12 @@ pub fn client_handshake(stream: &mut TcpStream, uri: &Uri, token: Option<&str>) 
 pub fn server_handshake(stream: &mut TcpStream, token: Option<&str>) -> Result<(), std::io::Error> {
     let head = read_http_head(stream)?;
     let (request, headers) = parse_headers(&head);
+    let user_agent = header(&headers, "user-agent").unwrap_or("");
+    if !user_agent.starts_with("rush/") {
+        let _ = stream.write_all(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+        let _ = stream.flush();
+        return Err(std::io::Error::new(ErrorKind::PermissionDenied, "not a rush client"));
+    }
     let key = header(&headers, "sec-websocket-key").unwrap_or("").to_string();
     let upgrade_ok = header(&headers, "upgrade")
         .map(|v| v.eq_ignore_ascii_case("websocket"))

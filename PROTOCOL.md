@@ -21,9 +21,20 @@ The server listens on a TCP port. A session starts as an HTTP/1.1 upgrade:
     Sec-WebSocket-Accept: <base64(sha1(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))>
 
 The request path is not checked. The server must answer within 10 seconds or
-the client gives up. If the server was started with `-k KEY` (or has `RUSH_KEY`
-set), the client must add `Authorization: Bearer KEY` to the request or it gets
-dropped here after a one-second delay, which makes token guessing slow.
+the client gives up.
+
+rush servers additionally require the request to carry
+`User-Agent: rush/<version>`; anything else (including ush.py clients, which
+send their own user agent) is refused with HTTP 403 before the upgrade. This
+is what makes the compatibility one-directional: rush clients work against
+ush.py v4.0 servers, but ush.py clients cannot open rush servers. ush.py
+servers do not check the user agent, so the rush client connects to them
+fine.
+
+If the server was started with `-k KEY` (or has `RUSH_KEY`
+set), the client must also add `Authorization: Bearer KEY` to the request or
+it gets dropped here after a one-second delay, which makes token guessing
+slow.
 
 Normal RFC 6455 framing rules apply: client frames are masked, server frames
 are not, control frames carry at most 125 bytes, and no single frame may

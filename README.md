@@ -4,8 +4,10 @@ rush is a remote terminal over websockets. Server on a Linux box, client from
 anywhere, shell in your terminal. Written in Rust with zero dependencies:
 no crates, no interpreter, no runtime, one binary.
 
-It is a Rust implementation of ush and speaks the same wire protocol, so it
-works against a ush.py v4.0 server and vice versa.
+It is a Rust implementation of ush and speaks the same wire protocol. The
+compatibility is one-directional by design: a rush client connects to ush.py
+v4.0 servers fine, but ush.py clients are refused by rush servers (rush
+checks its own user agent at the handshake, ush.py clients fail there).
 
 ## Install
 
@@ -15,8 +17,16 @@ Linux:
 
 That puts the binary in /usr/bin/rush after checking it against SHA256SUMS.
 The repo is private, so if curl gets a 404 the script falls back to gh auth
-or GITHUB_TOKEN. `rush --update` upgrades the binary later, `rush --uninstall`
-removes it. On Windows, take rush.exe from the releases page.
+or GITHUB_TOKEN.
+
+Or the same way ush installs itself, one line as root:
+
+    wget -O /usr/bin/rush https://github.com/FolderFile/rush/releases/latest/download/rush-linux; chmod +x /usr/bin/rush
+
+While the repo is private that wget needs the browser download or gh, since
+releases are not public. `rush --update` upgrades the binary later,
+`rush --uninstall` removes it. On Windows, take rush.exe from the releases
+page.
 
 ## Build
 
