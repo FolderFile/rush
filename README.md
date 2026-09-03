@@ -1,3 +1,5 @@
+<img width="1332" height="692" alt="image-shadow" src="https://github.com/user-attachments/assets/be1c435d-18ea-45ac-a272-8ef5c8ac74c1" />
+
 # rush
 
 rush is a remote terminal over websockets. Server on a Linux box, client from
@@ -12,41 +14,41 @@ checks its own user agent at the handshake, ush.py clients fail there).
 ## Install
 
 Linux:
-
-    curl -fL https://github.com/FolderFile/rush/releases/latest/download/install.sh | bash
-
+```bash
+curl -fL https://github.com/FolderFile/rush/releases/latest/download/install.sh | bash
+```
 That puts the binary in /usr/bin/rush after checking it against SHA256SUMS.
 The repo is private, so if curl gets a 404 the script falls back to gh auth
 or GITHUB_TOKEN.
 
 Or the same way ush installs itself, one line as root:
-
-    wget -O /usr/bin/rush https://github.com/FolderFile/rush/releases/latest/download/rush-linux; chmod +x /usr/bin/rush
-
+```bash
+wget -O /usr/bin/rush https://github.com/FolderFile/rush/releases/latest/download/rush-linux; chmod +x /usr/bin/rush
+```
 While the repo is private that wget needs the browser download or gh, since
 releases are not public. `rush --update` upgrades the binary later,
 `rush --uninstall` removes it. On Windows, take rush.exe from the releases
 page.
 
 ## Build
-
-    cargo build --release
-
+```bash
+cargo build --release
+```
 That is the whole toolchain story. The result in target/release/rush is all
 you need.
 
 ## Usage
 
 Server (Linux):
-
-    rush -s -p 8080
-
+```bash
+rush -s -p 8080
+```
 Client (Linux or Windows):
-
-    rush thehost -p 8080      ip, ush-style, defaults to port 8080
-    rush thehost:8080         explicit port
-    rush thehost              domain, defaults to port 80
-
+```bash
+rush thehost -p 8080      ip, ush-style, defaults to port 8080
+rush thehost:8080         explicit port
+rush thehost              domain, defaults to port 80
+```
 A bare domain goes out on port 80, which is what you want behind a
 cloudflared tunnel; this box's own public server runs that way at
 rush-sh.venesus.xyz. On a normal root-run server you get whatever login
@@ -54,9 +56,9 @@ prompt the machine shows (rush runs /bin/login, same as ush), username and
 password included. `Ctrl+]` disconnects.
 
 Run a single command instead of a shell, ssh style:
-
-    rush thehost -e "uname -a"
-
+```bash
+rush thehost -e "uname -a"
+```
 The client exits with the remote command's exit status. If the link is
 unreliable, add `-r` and the client will retry a dropped connection five
 times with backoff.
@@ -68,10 +70,10 @@ and installs a systemd or OpenRC service, whichever it finds.
 
 By default anyone who can reach the port gets a login prompt. To require a
 shared secret:
-
-    rush -s -p 8080 -k mysecret
-    rush thehost -p 8080 -k mysecret
-
+```bash
+rush -s -p 8080 -k mysecret
+rush thehost -p 8080 -k mysecret
+```
 or set RUSH_KEY on both sides. Wrong tokens get dropped after a one second
 delay, the comparison is constant time, and sessions run with a scrubbed
 environment (TERM and PATH only) so the token cannot leak into a shell.
