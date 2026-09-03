@@ -51,9 +51,11 @@ rush thehost              domain, defaults to port 80
 ```
 A bare domain goes out on port 80, which is what you want behind a
 cloudflared tunnel; this box's own public server runs that way at
-rush-sh.venesus.xyz. On a normal root-run server you get whatever login
-prompt the machine shows (rush runs /bin/login, same as ush), username and
-password included. `Ctrl+]` disconnects.
+rush-sh.venesus.xyz. You get whatever login prompt the machine shows:
+rush runs /bin/login, same as ush, so username and password are asked for
+like a local console. That needs the server to run as root (the -si
+service does); as a normal user there is no login step, so use RUSH_SHELL
+if you want a shell without login on purpose. `Ctrl+]` disconnects.
 
 Run a single command instead of a shell, ssh style:
 ```bash
