@@ -71,7 +71,9 @@ fn split_host_port(host: &str, default_port: u16) -> (String, u16) {
             }
         }
     }
-    (host.to_string(), default_port)
+    let is_domain = host.chars().any(|c| c.is_ascii_alphabetic());
+    let port = if is_domain { 80 } else { default_port };
+    (host.to_string(), port)
 }
 
 fn session(host: &str, port: u16, token: Option<&str>, exec: Option<&str>) -> Outcome {
