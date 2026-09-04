@@ -26,3 +26,42 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - run: cargo build --release --locked --target ${{ matrix.target }}
       - run: cargo test --release --locked --target ${{ matrix.target }}
+      - name: protocol smoke test
+        if: matrix.name == 'linux'
+        run: |
+          RUSH_SHELL=/bin/sh ./target/x86_64-unknown-linux-musl/release/rush -s -p 8399 &
+          sleep 1
+          python3 - <<'PYEOF'
+          import base64, json, os, socket, struct, time
+          GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+          def handshake(ua):
+              s = socket.create_connection(("127.0.0.1", 8399), timeout=10)
+              key = base64.b64encode(os.urandom(16)).decode()
+              s.sendall((f"GET / HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                         f"Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {key}\r\nUser-Agent: {ua}\r\n\r\n").encode())
+              return s
+
+          s = handshake("rush/smoke")
+          resp = b""
+          while b"\r\n\r\n" not in resp:
+              resp += s.recv(4096)
+          assert resp.startswith(b"HTTP/1.1 101"), resp
+
+          def send_text(t):
+              mask = os.urandom(4); p = t.encode(); n = len(p)
+              hdr = bytes([0x80 | 1]) + (bytes([n | 0x80]) if n < 126 else bytes([126 | 0x80]) + struct.pack(">H", n))
+              s.sendall(hdr + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(p)))
+
+          send_text(json.dumps({"type": "exec", "cmd": "echo smoke-$((20+3))", "rows": 24, "cols": 80}))
+          buf = b""; end = time.time() + 8
+          while time.time() < end and b"smoke-23" not in buf:
+              try: buf += s.recv(65536)
+              except Exception: break
+          assert b"smoke-23" in buf, buf
+
+          s2 = handshake("other-client/1.0")
+          r2 = s2.recv(200)
+          assert r2.startswith(b"HTTP/1.1 403"), r2
+          print("SMOKE OK")
+          PYEOF
