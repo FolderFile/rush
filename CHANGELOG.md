@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1
+
+- fix: sessions dropped at the login prompt. /bin/login calls vhangup on
+  the tty during setup and the first reads on the pty master then fail
+  with EIO; the server treated that as a dead session and closed it.
+  EIO is now retried until the fd is readable or the session ends.
+- fix: reconnect backoff reset after a good session
+
 ## 1.0.0
 
 First stable release.
