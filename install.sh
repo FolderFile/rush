@@ -3,10 +3,9 @@ set -e
 
 REPO="${RUSH_REPO:-FolderFile/rush}"
 DEST="${RUSH_DEST:-/usr/bin/rush}"
-ASSET="rush-linux"
-
 case "$(uname -m)" in
-    x86_64|amd64) ;;
+    x86_64|amd64) ASSET="rush-linux-x86_64" ;;
+    aarch64|arm64) ASSET="rush-linux-aarch64" ;;
     *)
         echo "rush: unsupported architecture: $(uname -m)" >&2
         exit 1

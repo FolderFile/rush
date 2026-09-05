@@ -11,9 +11,9 @@ use crate::crypto::{base64, random_bytes, sha1};
 use crate::sys;
 
 pub const WS_GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-pub const MAX_FRAME: usize = 1024 * 1024;
+pub const MAX_FRAME: usize = 4 * 1024 * 1024;
 #[cfg(target_os = "linux")]
-pub const MAX_QUEUE: usize = 64;
+pub const MAX_QUEUE: usize = 256;
 #[cfg(target_os = "linux")]
 pub const MAX_PENDING_INPUT: usize = 1024 * 1024;
 pub const PING_INTERVAL: u64 = 20;

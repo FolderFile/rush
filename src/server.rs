@@ -86,7 +86,7 @@ impl PtySession {
                 if reader_stop.load(Ordering::SeqCst) {
                     break;
                 }
-                ws::poll_readable(master, 100);
+                ws::poll_readable(master, 50);
                 continue;
             }
             if err == sys::EIO {
@@ -94,7 +94,7 @@ impl PtySession {
                 if reader_stop.load(Ordering::SeqCst) {
                     break;
                 }
-                if !ws::poll_readable(master, 100) {
+                if !ws::poll_readable(master, 50) {
                     continue;
                 }
                 continue;
@@ -203,15 +203,18 @@ fn flush_input(master: i32, pending: &mut Vec<u8>, stop: &AtomicBool) -> bool {
         if stop.load(Ordering::SeqCst) {
             return false;
         }
-        let n = pty::write(master, pending);
+        let n = pty::write(master, &pending[..pending.len().min(65536)]);
         if n > 0 {
             pending.drain(..n as usize);
-            continue;
+            if !pending.is_empty() {
+                continue;
+            }
+            return true;
         }
         if n < 0 {
             let err = sys::last_os_error();
             if err == sys::EAGAIN || err == sys::EINTR {
-                if !ws::poll_writable(master, 100) && !stop.load(Ordering::SeqCst) {
+                if !ws::poll_writable(master, 5) && !stop.load(Ordering::SeqCst) {
                     continue;
                 }
                 continue;

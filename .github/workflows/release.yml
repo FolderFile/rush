@@ -9,7 +9,7 @@ on:
       - "v*"
 
 jobs:
-  linux:
+  linux-x86_64:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,11 +20,28 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - run: cargo build --release --locked --target x86_64-unknown-linux-musl
       - name: rename binary
-        run: cp target/x86_64-unknown-linux-musl/release/rush rush-linux
+        run: cp target/x86_64-unknown-linux-musl/release/rush rush-linux-x86_64
       - uses: actions/upload-artifact@v4
         with:
-          name: rush-linux
-          path: rush-linux
+          name: rush-linux-x86_64
+          path: rush-linux-x86_64
+
+  linux-aarch64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-musl
+      - name: install cross linker
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+      - run: cargo build --release --locked --target aarch64-unknown-linux-musl
+      - name: rename binary
+        run: cp target/aarch64-unknown-linux-musl/release/rush rush-linux-aarch64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rush-linux-aarch64
+          path: rush-linux-aarch64
 
   windows:
     runs-on: windows-latest
@@ -41,7 +58,7 @@ jobs:
           path: rush.exe
 
   publish:
-    needs: [linux, windows]
+    needs: [linux-x86_64, linux-aarch64, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -49,33 +66,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: rush-linux
+          name: rush-linux-x86_64
+      - uses: actions/download-artifact@v4
+        with:
+          name: rush-linux-aarch64
       - uses: actions/download-artifact@v4
         with:
           name: rush.exe
       - name: checksums
-        run: sha256sum rush-linux rush.exe > SHA256SUMS
+        run: sha256sum rush-linux-x86_64 rush-linux-aarch64 rush.exe > SHA256SUMS
       - uses: softprops/action-gh-release@v2
         with:
           body: |
             rush ${{ github.ref_name }}
 
-            rush-linux: Linux x86_64 server + client.
-            rush.exe: Windows x86_64 client.
+            - rush-linux-x86_64: static musl build, runs on any 64-bit intel/amd linux
+            - rush-linux-aarch64: static musl build for arm64, including Termux with glibc-compatible setups, raspberry pi 4/5 and arm servers
+            - rush.exe: windows client
 
-            Install on Linux:
-
-                curl -fL https://github.com/FolderFile/rush/releases/latest/download/install.sh | bash
-
-            rush -s -p 8080            run the server (Linux)
-            rush host -p 8080          connect (Linux/Windows)
-            rush host -e CMD           run one command, exit with its status
-            rush --update              update the installed binary
-            rush --uninstall           remove binary and service
-
-            Optional shared token (-k / RUSH_KEY); see README for security notes.
-          files: |
-            rush-linux
-            rush.exe
-            install.sh
-            SHA256SUMS
+            install: curl -fL https://github.com/FolderFile/rush/releases/latest/download/install.sh | bash

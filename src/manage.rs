@@ -121,19 +121,31 @@ fn verify_checksum(binary_path: &str, sums_path: &str, asset: &str) -> Result<()
     Ok(())
 }
 
+pub fn release_asset() -> &'static str {
+    #[cfg(target_arch = "aarch64")]
+    {
+        "rush-linux-aarch64"
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    {
+        "rush-linux-x86_64"
+    }
+}
+
 pub fn update() -> Result<(), String> {
     let target = installed_path().unwrap_or_else(|| std::path::PathBuf::from(INSTALL_PATH));
+    let asset = release_asset();
     let pid = std::process::id();
     let tmp_bin = format!("/tmp/rush.update.{}", pid);
     let tmp_sums = format!("/tmp/rush.sums.{}", pid);
 
-    download_asset("rush-linux", &tmp_bin)?;
+    download_asset(asset, &tmp_bin)?;
     use std::os::unix::fs::PermissionsExt;
     std::fs::set_permissions(&tmp_bin, std::fs::Permissions::from_mode(0o755))
         .map_err(|e| e.to_string())?;
 
     download_asset("SHA256SUMS", &tmp_sums)?;
-    if let Err(e) = verify_checksum(&tmp_bin, &tmp_sums, "rush-linux") {
+    if let Err(e) = verify_checksum(&tmp_bin, &tmp_sums, asset) {
         std::fs::remove_file(&tmp_bin).ok();
         std::fs::remove_file(&tmp_sums).ok();
         return Err(e);
