@@ -1,6 +1,6 @@
 [package]
 name = "rush"
-version = "1.0.1"
+version = "1.1.0"
 edition = "2021"
 description = "rush: a zero-dependency Rust implementation of ush, remote terminal over websockets, for Linux and Windows."
 license = "MIT"

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0
+
+- arm64: static musl builds for aarch64 (termux-style environments,
+  raspberry pi, arm servers); install.sh and --update pick the right
+  binary per architecture
+- keep-up tuning: bigger ingest queue, 4MB frames, sliced pty input
+  writes, shorter EAGAIN waits so pastes and bursts stay responsive
+
 ## 1.0.1
 
 - fix: sessions dropped at the login prompt. /bin/login calls vhangup on
