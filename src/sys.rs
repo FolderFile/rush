@@ -7,6 +7,8 @@ pub type pid_t = i32;
 pub const EAGAIN: i32 = 11;
 #[cfg(target_os = "linux")]
 pub const EINTR: i32 = 4;
+#[cfg(target_os = "linux")]
+pub const EIO: i32 = 5;
 
 #[cfg(target_os = "linux")]
 pub const O_RDWR: i32 = 2;

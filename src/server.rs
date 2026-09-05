@@ -89,6 +89,16 @@ impl PtySession {
                 ws::poll_readable(master, 100);
                 continue;
             }
+            if err == sys::EIO {
+                std::thread::sleep(Duration::from_millis(50));
+                if reader_stop.load(Ordering::SeqCst) {
+                    break;
+                }
+                if !ws::poll_readable(master, 100) {
+                    continue;
+                }
+                continue;
+            }
             reader_queue.push(None, &reader_stop);
             break;
         });
