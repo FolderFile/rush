@@ -18,12 +18,14 @@ Linux:
 curl -fL https://github.com/FolderFile/rush/releases/latest/download/install.sh | bash
 ```
 That puts the binary in /usr/bin/rush after checking it against SHA256SUMS.
-The repo is private, so if curl gets a 404 the script falls back to gh auth
-or GITHUB_TOKEN.
+On termux there is no /usr/bin and no real sudo, so the installer detects
+the app prefix and drops rush into $PREFIX/bin with no root needed; set
+RUSH_DEST=/some/path to override anywhere. The repo is private, so if curl
+gets a 404 the script falls back to gh auth or GITHUB_TOKEN.
 
 Or the same way ush installs itself, one line as root:
 ```bash
-wget -O /usr/bin/rush https://github.com/FolderFile/rush/releases/latest/download/rush-linux; chmod +x /usr/bin/rush
+wget -O /usr/bin/rush https://github.com/FolderFile/rush/releases/latest/download/rush-linux-x86_64; chmod +x /usr/bin/rush
 ```
 While the repo is private that wget needs the browser download or gh, since
 releases are not public. `rush --update` upgrades the binary later,
