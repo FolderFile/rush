@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1
+
+- client: retry the initial TCP connect 3 times before reporting a
+  transport error; mobile networks (termux on mobile data) often drop
+  the first handshake attempt
+
 ## 1.1.0
 
 - arm64: static musl builds for aarch64 (termux-style environments,
