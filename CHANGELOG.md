@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.2
+
+- rush --update asks for sudo on its own when the install target is
+  not writable and a terminal is available, instead of failing with
+  'are you root?'; on systems without sudo it still tells you to run
+  'sudo rush --update'
+
 ## 1.1.1
 
 - client: retry the initial TCP connect 3 times before reporting a

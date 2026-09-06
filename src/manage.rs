@@ -133,6 +133,78 @@ pub fn release_asset() -> &'static str {
 }
 
 pub fn update() -> Result<(), String> {
+    if std::env::args().any(|a| a == "--already-elevated") {
+        return update_elevated();
+    }
+    let target = installed_path().unwrap_or_else(|| std::path::PathBuf::from(INSTALL_PATH));
+    let asset = release_asset();
+    let pid = std::process::id();
+    let tmp_bin = format!("/tmp/rush.update.{}", pid);
+    let tmp_sums = format!("/tmp/rush.sums.{}", pid);
+
+    download_asset(asset, &tmp_bin)?;
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(&tmp_bin, std::fs::Permissions::from_mode(0o755))
+        .map_err(|e| e.to_string())?;
+
+    download_asset("SHA256SUMS", &tmp_sums)?;
+    if let Err(e) = verify_checksum(&tmp_bin, &tmp_sums, asset) {
+        std::fs::remove_file(&tmp_bin).ok();
+        std::fs::remove_file(&tmp_sums).ok();
+        return Err(e);
+    }
+    std::fs::remove_file(&tmp_sums).ok();
+
+    let version_out = Command::new(&tmp_bin)
+        .arg("--version")
+        .output()
+        .map_err(|e| {
+            std::fs::remove_file(&tmp_bin).ok();
+            format!("downloaded binary is broken: {}", e)
+        })?;
+    let new_version = String::from_utf8_lossy(&version_out.stdout)
+        .trim()
+        .trim_start_matches("rush ")
+        .to_string();
+    if !version_out.status.success() || new_version.is_empty() {
+        std::fs::remove_file(&tmp_bin).ok();
+        return Err("downloaded binary is not rush".into());
+    }
+
+    let staged = target.with_extension("update");
+    if std::fs::copy(&tmp_bin, &staged).is_err()
+        || std::fs::set_permissions(&staged, std::fs::Permissions::from_mode(0o755)).is_err()
+        || std::fs::rename(&staged, &target).is_err()
+    {
+        std::fs::remove_file(&staged).ok();
+        std::fs::remove_file(&tmp_bin).ok();
+        let exe = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("rush"));
+        let status = Command::new("sudo")
+            .arg("-p")
+            .arg("rush needs admin rights, password: ")
+            .arg(&exe)
+            .args(["--update", "--already-elevated"])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if status {
+            return Ok(());
+        }
+        return Err(format!(
+            "cannot replace {}: run 'sudo rush --update'",
+            target.display()
+        ));
+    }
+    let _ = std::fs::remove_file(&tmp_bin);
+    println!(
+        "rush updated to {} at {}",
+        new_version,
+        target.display()
+    );
+    Ok(())
+}
+
+fn update_elevated() -> Result<(), String> {
     let target = installed_path().unwrap_or_else(|| std::path::PathBuf::from(INSTALL_PATH));
     let asset = release_asset();
     let pid = std::process::id();
@@ -171,18 +243,14 @@ pub fn update() -> Result<(), String> {
     let staged = target.with_extension("update");
     std::fs::copy(&tmp_bin, &staged).map_err(|e| {
         let _ = std::fs::remove_file(&tmp_bin);
-        format!("cannot stage {}: {} (are you root?)", target.display(), e)
+        format!("cannot stage {}: {}", target.display(), e)
     })?;
     let _ = std::fs::remove_file(&tmp_bin);
     std::fs::set_permissions(&staged, std::fs::Permissions::from_mode(0o755))
         .map_err(|e| e.to_string())?;
     std::fs::rename(&staged, &target)
-        .map_err(|e| format!("cannot replace {}: {} (are you root?)", target.display(), e))?;
-    println!(
-        "rush updated to {} at {}",
-        new_version,
-        target.display()
-    );
+        .map_err(|e| format!("cannot replace {}: {}", target.display(), e))?;
+    println!("rush updated to {} at {}", new_version, target.display());
     Ok(())
 }
 

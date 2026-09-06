@@ -71,6 +71,7 @@ fn parse_args() -> Result<Args, String> {
             "-s" | "--server" => args.server = true,
             "-si" => args.install = true,
             "--update" => args.update = true,
+            "--already-elevated" => {}
             "--uninstall" => args.uninstall = true,
             "-v" | "--verbose" => args.verbose = true,
             "-r" | "--reconnect" => args.reconnect = true,
