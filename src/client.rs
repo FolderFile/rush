@@ -10,6 +10,7 @@ use crate::term;
 use crate::ws;
 
 const RECONNECT_ATTEMPTS: u32 = 5;
+const QUICK_RETRIES: u32 = 3;
 
 enum Outcome {
     UserQuit,
@@ -90,12 +91,23 @@ fn session(host: &str, port: u16, token: Option<&str>, exec: Option<&str>) -> Ou
             return Outcome::UserQuit;
         }
     };
-    let mut stream = match TcpStream::connect((uri.host.as_str(), uri.port)) {
-        Ok(s) => s,
-        Err(_) => return Outcome::TransportError,
+    let mut stream = None;
+    for _ in 0..QUICK_RETRIES {
+        match TcpStream::connect((uri.host.as_str(), uri.port)) {
+            Ok(s) => {
+                stream = Some(s);
+                break;
+            }
+            Err(_) => std::thread::sleep(Duration::from_millis(300)),
+        }
+    }
+    let mut stream = match stream {
+        Some(s) => s,
+        None => return Outcome::TransportError,
     };
     let _ = stream.set_nodelay(true);
     let _ = stream.set_read_timeout(Some(ws::HANDSHAKE_TIMEOUT));
+    let _ = stream.set_write_timeout(Some(ws::HANDSHAKE_TIMEOUT));
     if ws::client_handshake(&mut stream, &uri, token).is_err() {
         return Outcome::TransportError;
     }
