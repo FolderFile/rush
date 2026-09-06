@@ -2,7 +2,12 @@
 set -e
 
 REPO="${RUSH_REPO:-FolderFile/rush}"
-DEST="${RUSH_DEST:-/usr/bin/rush}"
+
+if [ -n "$TERMUX_VERSION" ] || [ -n "$TERMUX__PREFIX" ] || { [ -n "$PREFIX" ] && [ "$(uname -o 2>/dev/null)" = "Android" ]; }; then
+    DEST="${RUSH_DEST:-$PREFIX/bin/rush}"
+else
+    DEST="${RUSH_DEST:-/usr/bin/rush}"
+fi
 case "$(uname -m)" in
     x86_64|amd64) ASSET="rush-linux-x86_64" ;;
     aarch64|arm64) ASSET="rush-linux-aarch64" ;;
@@ -47,15 +52,13 @@ else
     echo "rush: warning: could not verify checksum" >&2
 fi
 
-if [ "$(id -u)" -ne 0 ]; then
-    if command -v sudo >/dev/null 2>&1; then
-        sudo install -m 755 "$TMP" "$DEST"
-    else
-        echo "rush: install needs root (run with sudo)" >&2
-        exit 1
-    fi
-else
+if [ -w "$(dirname "$DEST")" ] || [ "$(id -u)" -eq 0 ]; then
     install -m 755 "$TMP" "$DEST"
+elif [ -t 0 ] && command -v sudo >/dev/null 2>&1 && [ "$(uname -o 2>/dev/null)" != "Android" ]; then
+    sudo install -m 755 "$TMP" "$DEST"
+else
+    echo "rush: cannot write to $DEST; rerun with RUSH_DEST set, e.g. RUSH_DEST=$HOME/.local/bin/rush" >&2
+    exit 1
 fi
 
 echo "rush installed to $DEST:"
