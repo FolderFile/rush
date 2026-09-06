@@ -54,7 +54,7 @@ fi
 
 if [ -w "$(dirname "$DEST")" ] || [ "$(id -u)" -eq 0 ]; then
     install -m 755 "$TMP" "$DEST"
-elif [ -t 0 ] && command -v sudo >/dev/null 2>&1 && [ "$(uname -o 2>/dev/null)" != "Android" ]; then
+elif command -v sudo >/dev/null 2>&1 && [ "$(uname -o 2>/dev/null)" != "Android" ] && [ "$(uname 2>/dev/null)" != "Android" ]; then
     sudo install -m 755 "$TMP" "$DEST"
 else
     echo "rush: cannot write to $DEST; rerun with RUSH_DEST set, e.g. RUSH_DEST=$HOME/.local/bin/rush" >&2
